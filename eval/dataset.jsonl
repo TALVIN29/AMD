@@ -1,0 +1,10 @@
+{"prompt": "What is the capital of France?", "expected": "Paris"}
+{"prompt": "What is 12 * 8?", "expected": "96"}
+{"prompt": "Who wrote 'Romeo and Juliet'?", "expected": "William Shakespeare"}
+{"prompt": "What is the chemical symbol for gold?", "expected": "Au"}
+{"prompt": "Explain the halting problem in one sentence.", "expected": "It's impossible to write a general algorithm that decides whether any given program halts or runs forever."}
+{"prompt": "What is the square root of 144?", "expected": "12"}
+{"prompt": "Name the largest planet in our solar system.", "expected": "Jupiter"}
+{"prompt": "What does ROCm stand for?", "expected": "Radeon Open Compute"}
+{"prompt": "Summarize the plot of a two-sentence bedtime story about a fox and the moon.", "expected": "open-ended"}
+{"prompt": "What is the time complexity of binary search?", "expected": "O(log n)"}
