@@ -1,5 +1,8 @@
 # Smart-Router Agent — AMD Hackathon Act II, Track 1
 
+> 👋 **Teammates: start with [`docs/HANDOVER.md`](docs/HANDOVER.md)** — plain-English overview,
+> status, and who-does-what. This README is the technical version.
+
 Answers the 8 Track 1 categories (facts, math, sentiment, summarisation, NER, code
 debugging, logic, code generation) while spending the **fewest Fireworks tokens** possible.
 
