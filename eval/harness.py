@@ -1,17 +1,28 @@
-"""Run the cascade router over the practice dataset and report accuracy vs. cost.
+"""Tune the agent on the practice dataset: report accuracy AND total tokens.
 
-Usage: python -m eval.harness
+Track 1 = pass the accuracy gate, then win on FEWEST tokens. So this measures both.
+Point it at Fireworks with your own key while developing:
+
+    export FIREWORKS_API_BASE_URL=https://api.fireworks.ai/inference/v1
+    export FIREWORKS_API_KEY=fw_...
+    export MODEL=accounts/fireworks/models/<some-allowed-model>
+    python -m eval.harness
+
+No key handy? `AGENT_DRY_RUN=1 python -m eval.harness` exercises the plumbing
+(stub answers, 0 tokens) without calling the API.
 """
 import json
 from pathlib import Path
 
-from router.cascade import route
+from agent import fireworks
+from agent.prompts import system_for
+from agent.run import allowed_models, field
 
 DATASET_PATH = Path(__file__).parent / "dataset.jsonl"
 
 
 def load_dataset():
-    with open(DATASET_PATH) as f:
+    with open(DATASET_PATH, encoding="utf-8") as f:
         return [json.loads(line) for line in f if line.strip()]
 
 
@@ -23,24 +34,26 @@ def is_correct(answer: str, expected: str) -> bool:
 
 def main():
     dataset = load_dataset()
-    total_cost = 0.0
+    models = allowed_models()
+    total_tokens = 0
     correct = 0
-    local_count = 0
+    gradable = 0
 
     for row in dataset:
-        result = route(row["prompt"])
-        total_cost += result["cost"]
-        if result["route"].startswith("local"):
-            local_count += 1
-        if is_correct(result["answer"], row["expected"]):
-            correct += 1
-        print(f"[{result['route']:>13}] conf={result['confidence']:.2f} cost=${result['cost']:.5f}  {row['prompt'][:60]}")
+        prompt = field(row, "prompt", "input", "text", "question")
+        category = field(row, "category", "type") or None
+        text, tokens = fireworks.answer(prompt, model=models[0], system=system_for(category))
+        total_tokens += tokens
+        if row.get("expected") != "open-ended":
+            gradable += 1
+            if is_correct(text, row["expected"]):
+                correct += 1
+        print(f"tokens={tokens:>4}  {prompt[:50]!r} -> {text[:50]!r}")
 
-    n = len(dataset)
     print("\n--- Summary ---")
-    print(f"Accuracy: {correct}/{n} ({100 * correct / n:.1f}%)")
-    print(f"Total cost: ${total_cost:.5f}")
-    print(f"Routed locally: {local_count}/{n} ({100 * local_count / n:.1f}%)")
+    print(f"Model: {models[0]}")
+    print(f"Accuracy: {correct}/{gradable} gradable ({100 * correct / max(gradable, 1):.1f}%)")
+    print(f"Total tokens: {total_tokens}  (lower = better rank)")
 
 
 if __name__ == "__main__":

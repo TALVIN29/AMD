@@ -1,0 +1,7 @@
+{
+  "tasks": [
+    {"task_id": "t1", "category": "factual", "prompt": "What is the capital of France?"},
+    {"task_id": "t2", "category": "math", "prompt": "What is 12 * 8?"},
+    {"task_id": "t3", "category": "sentiment", "prompt": "Classify sentiment: 'I love this.'"}
+  ]
+}

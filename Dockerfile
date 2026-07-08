@@ -1,16 +1,15 @@
-# NOTE: base image / torch install must be swapped for a ROCm-compatible build
-# when deploying on the AMD Developer Cloud GPU instance - see README.
-FROM python:3.11-slim
+# Judging VM runs linux/amd64. Build with:
+#   docker build --platform linux/amd64 -t <registry>/amd-track1:latest .
+# (the --platform flag matters only if you build on Apple Silicon.)
+FROM --platform=linux/amd64 python:3.11-slim
 
 WORKDIR /app
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY router/ router/
-COPY eval/ eval/
-COPY service/ service/
+COPY agent/ agent/
 
-EXPOSE 8000
-
-CMD ["uvicorn", "service.app:app", "--host", "0.0.0.0", "--port", "8000"]
+# One-shot batch: read /input/tasks.json -> answer via Fireworks -> write
+# /output/results.json -> exit. Not a long-running server.
+CMD ["python", "-m", "agent.run"]
