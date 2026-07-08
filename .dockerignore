@@ -1,0 +1,9 @@
+.git
+__pycache__
+*.pyc
+*.gguf
+models/
+out/
+docs/
+eval/
+*.md

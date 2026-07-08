@@ -13,9 +13,10 @@ DRY_RUN = os.environ.get("AGENT_DRY_RUN") == "1"
 
 
 def _base_url() -> str:
-    url = os.environ.get("FIREWORKS_API_BASE_URL", "").rstrip("/")
+    # The guide is inconsistent on the exact name, so accept both.
+    url = (os.environ.get("FIREWORKS_BASE_URL") or os.environ.get("FIREWORKS_API_BASE_URL") or "").rstrip("/")
     if not url:
-        raise RuntimeError("FIREWORKS_API_BASE_URL not set (harness injects it at eval time)")
+        raise RuntimeError("FIREWORKS base URL not set (harness injects it at eval time)")
     return url
 
 

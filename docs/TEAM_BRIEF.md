@@ -4,48 +4,53 @@ Short version for teammates. All plain English.
 
 ## The one thing to understand
 
-Track 1 is a **"be correct using the fewest words" contest**. Judges first check our
-answers are right, then rank everyone by **how few tokens (word-pieces) they spent on
-Fireworks AI**. Fewer = higher rank.
+Track 1 is a **"be correct while calling the paid AI as little as possible" contest**.
+Judges first check our answers are right, then rank everyone by **how few tokens
+(word-pieces) they spent on Fireworks AI**. Fewer = higher rank.
 
-## What our repo used to do (and why it was wrong)
+**The key rule (confirmed on launch day):** a **local** AI model running *inside our
+container* is **free** — it counts toward being correct, but its tokens do **not** count
+against us. The organizers literally say: *run as many local models as you need, and make
+as few Fireworks calls as possible.* A submission that answers everything locally and calls
+Fireworks zero times is a valid way to reach the **top** of the leaderboard.
 
-The old version answered questions with a **local** model to save money, and only asked
-the paid Fireworks model when unsure.
+## What our agent now does (a "smart router")
 
-The rules say:
-- Local answers **count as zero** — they win nothing.
-- **Every answer must go through Fireworks** (`FIREWORKS_API_BASE_URL`), or it isn't recorded.
+```
+each task → small local model (free)  →  confident?  → use its answer   (0 tokens)
+                                       →  unsure?     → ask Fireworks     (costs tokens)
+```
 
-So the old "save money locally" idea scored nothing and risked disqualification. It also
-was built as an always-on web app, but the contest wants a program that runs once and stops.
+- Easy tasks (facts, sentiment, names, summaries) → answered **locally for free**.
+- Hard tasks (math, logic, code) → sent to **Fireworks** only when the small model isn't sure.
 
-## What I changed
+## What I changed (and one honest correction)
 
-1. **Rebuilt it as a one-shot program**: read the tasks file → answer each with Fireworks →
-   write the answers file → stop. (This is exactly the shape the contest asks for.)
-2. **Made every prompt and answer as short as possible** — that's how you win the token game.
-   (This is the same idea as the `caveman` and `ponytail` projects we studied.)
-3. **Deleted the heavy local-model code** → our Docker image dropped from multiple GB to
-   **208 MB** (limit is 10 GB), so it builds and uploads fast.
-4. **Upgraded our test tool** to show accuracy **and** token count, so we can tune.
+I first built a Fireworks-**only** version, because an **older** copy of the guide implied
+all answers had to go through Fireworks. The **updated** guide flips that — local is free and
+encouraged. So I rebuilt it the right way:
 
-All of this is already **pushed to `main`**. Read `README.md` for the technical detail and
-`docs/SETUP.md` for account setup.
+1. **Smart router**: try the free local model first, fall back to Fireworks only when unsure.
+2. **Bundled a small local model** (a 2-3B "quantized" model via llama.cpp) that runs on the
+   judging machine's modest hardware (4 GB RAM, 2 CPUs, no GPU).
+3. **Kept it as a one-shot program** in the right shape: read tasks → answer → write results → stop.
+4. **Terse prompts** so any Fireworks calls we *do* make stay cheap.
 
-## What still needs a human decision (launch day)
+Our earlier Fireworks-only image is still a **valid backup** entry (correct, just spends
+more tokens). The new one aims for a real leaderboard position.
 
-- The real list of allowed models + the exact task format are revealed on launch day.
-  The code reads them at runtime — we just tune which model to use.
-- **Ask on the lablab Discord**: *"For Track 1, can a local model be used only to route/decide,
-  never to produce the graded answer?"* — confirms we're reading the rule right.
+## What still needs decisions (before the July 11 deadline)
 
----
+- **Which local model + how eager to escalate.** There's a dial (`CONFIDENCE_THRESHOLD`):
+  higher = safer answers but more Fireworks tokens; lower = cheaper but riskier. We tune it
+  on practice tasks. See `README.md`.
+- **Which Fireworks model** to fall back to (allowed list is in Discord).
 
 ## Your task: pressure-test it with Codex
 
 I want a second pair of eyes. Please run **Codex** (OpenAI's coding agent) over the repo and
-push back on my work — find anything that loses accuracy or wastes tokens.
+push back — find anything that loses accuracy, wastes Fireworks tokens, or breaks on the
+4 GB / 2-CPU box.
 
 ### How to run Codex
 1. Install (one-time): `npm install -g @openai/codex`
@@ -53,26 +58,26 @@ push back on my work — find anything that loses accuracy or wastes tokens.
 3. Paste this prompt:
 
 ```
-This repo is an AMD Hackathon Track 1 agent. Scoring: pass an LLM-judge accuracy
-gate, then rank by FEWEST total Fireworks tokens. Review it for improvements.
+This repo is an AMD Hackathon Track 1 agent. Scoring: pass an LLM-judge accuracy gate,
+then rank by FEWEST Fireworks tokens. Local model inference is FREE (doesn't count toward
+tokens), so the agent is a router: answer locally, escalate to Fireworks only when unsure.
+Grading box: 4 GB RAM, 2 vCPU, CPU-only, linux/amd64.
 
-Hard constraints — do NOT break these:
-- All graded inference must go through FIREWORKS_API_BASE_URL. Never add a local-model
-  answer path (local tokens count as zero and are disallowed as final answers).
-- Keep the Docker image small (no torch/transformers/heavy deps).
-- Output must be a one-shot batch: read /input/tasks.json, write valid /output/results.json, exit 0.
+Review for improvements. Hard constraints — do NOT break these:
+- Keep local-first routing; Fireworks is only the fallback (via FIREWORKS_BASE_URL / ALLOWED_MODELS).
+- Must fit 4 GB RAM on CPU (local model stays 2-3B 4-bit); image under 10 GB; ready in 60s.
+- One-shot batch: read /input/tasks.json, write valid /output/results.json (list of {task_id, answer}), exit 0.
 
-Focus your review on:
-1. Prompt wording in agent/prompts.py — can it be shorter and still pass all 8 categories
-   (facts, math, sentiment, summarisation, NER, code debugging, logic, code generation)?
-2. Whether max_tokens / temperature / model choice in agent/ can cut tokens without losing accuracy.
-3. Robustness of the tasks.json parsing in agent/run.py against schema variants.
-4. Any correctness risks in the 8 categories.
+Focus on:
+1. The routing decision in agent/router.py — is the confidence signal from agent/local.py
+   (avg token logprob) a sound escalation trigger? Suggest better, still-cheap signals.
+2. Prompt wording in agent/prompts.py — shorter while keeping accuracy on all 8 categories?
+3. Is a 2-3B model the right pick, or is there a better small model for math/logic/code?
+4. Robustness of tasks.json parsing in agent/run.py against schema variants.
 
-Propose concrete edits with before/after token impact. Don't over-engineer.
+Propose concrete edits with expected impact on accuracy and token count. Don't over-engineer.
 ```
 
-4. Bring whatever Codex suggests back to the group — we'll decide together what to keep.
+4. Bring whatever Codex suggests back to the group — we decide together what to keep.
 
-> Note: Codex needs its own OpenAI API key (`export OPENAI_API_KEY=...`). If you don't have
-> one, tell me and we'll find another reviewer.
+> Codex needs its own OpenAI API key (`export OPENAI_API_KEY=...`). No key? Tell me.

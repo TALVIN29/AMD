@@ -1,22 +1,22 @@
-"""Tune the agent on the practice dataset: report accuracy AND total tokens.
+"""Tune the router on the practice dataset: accuracy AND Fireworks tokens.
 
-Track 1 = pass the accuracy gate, then win on FEWEST tokens. So this measures both.
-Point it at Fireworks with your own key while developing:
+Winning Track 1 = clear the accuracy gate, then spend the fewest Fireworks tokens.
+Local answers are free, so watch the local/remote split too.
 
-    export FIREWORKS_API_BASE_URL=https://api.fireworks.ai/inference/v1
+    # needs the bundled GGUF present + Fireworks env for escalation
+    export FIREWORKS_BASE_URL=https://api.fireworks.ai/inference/v1
     export FIREWORKS_API_KEY=fw_...
-    export MODEL=accounts/fireworks/models/<some-allowed-model>
+    export ALLOWED_MODELS=accounts/fireworks/models/<id>
+    export LOCAL_MODEL_PATH=./models/local.gguf
     python -m eval.harness
 
-No key handy? `AGENT_DRY_RUN=1 python -m eval.harness` exercises the plumbing
-(stub answers, 0 tokens) without calling the API.
+No model/key? `AGENT_DRY_RUN=1 python -m eval.harness` checks the plumbing only.
 """
 import json
 from pathlib import Path
 
-from agent import fireworks
-from agent.prompts import system_for
-from agent.run import allowed_models, field
+from agent import router
+from agent.run import field
 
 DATASET_PATH = Path(__file__).parent / "dataset.jsonl"
 
@@ -28,32 +28,31 @@ def load_dataset():
 
 def is_correct(answer: str, expected: str) -> bool:
     if expected == "open-ended":
-        return True  # not exact-match gradable; excluded from strict scoring
+        return True  # not exact-match gradable
     return expected.strip().lower() in answer.strip().lower()
 
 
 def main():
     dataset = load_dataset()
-    models = allowed_models()
-    total_tokens = 0
-    correct = 0
-    gradable = 0
+    total_tokens = correct = gradable = local_n = 0
 
     for row in dataset:
         prompt = field(row, "prompt", "input", "text", "question")
         category = field(row, "category", "type") or None
-        text, tokens = fireworks.answer(prompt, model=models[0], system=system_for(category))
+        answer, route, tokens = router.route(prompt, category)
         total_tokens += tokens
+        if route.startswith("local"):
+            local_n += 1
         if row.get("expected") != "open-ended":
             gradable += 1
-            if is_correct(text, row["expected"]):
-                correct += 1
-        print(f"tokens={tokens:>4}  {prompt[:50]!r} -> {text[:50]!r}")
+            correct += is_correct(answer, row["expected"])
+        print(f"[{route:>13}] tok={tokens:>4}  {prompt[:45]!r} -> {answer[:45]!r}")
 
+    n = len(dataset)
     print("\n--- Summary ---")
-    print(f"Model: {models[0]}")
     print(f"Accuracy: {correct}/{gradable} gradable ({100 * correct / max(gradable, 1):.1f}%)")
-    print(f"Total tokens: {total_tokens}  (lower = better rank)")
+    print(f"Answered locally: {local_n}/{n}  (free)")
+    print(f"Total Fireworks tokens: {total_tokens}  (lower = better rank)")
 
 
 if __name__ == "__main__":

@@ -23,7 +23,9 @@ _REASONING_CATEGORIES = {
 }
 
 
+def is_reasoning(category: str | None) -> bool:
+    return bool(category) and category.strip().lower() in _REASONING_CATEGORIES
+
+
 def system_for(category: str | None) -> str:
-    if category and category.strip().lower() in _REASONING_CATEGORIES:
-        return REASONING
-    return DEFAULT
+    return REASONING if is_reasoning(category) else DEFAULT
