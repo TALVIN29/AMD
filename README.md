@@ -89,7 +89,7 @@ local model handles is zero tokens.
 ## Launch-day checklist
 
 - [ ] Pick the local model size that fits 4 GB and clears accuracy (2-3B Q4 recommended).
-- [ ] Tune `CONFIDENCE_THRESHOLD` / `REASONING_THRESHOLD` on real-ish tasks.
+- [ ] Tune the category list in `agent/prompts.py` on real-ish tasks.
 - [ ] Choose the cheapest Fireworks escalation model that passes (`MODEL` / `ALLOWED_MODELS`).
 - [ ] Confirm the exact `tasks.json` schema (agent already handles common field/shape variants).
 

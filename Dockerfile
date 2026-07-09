@@ -1,7 +1,7 @@
 # Judging VM: linux/amd64, 4 GB RAM, 2 vCPU, CPU-only.
-# Build (add --platform on Apple Silicon):
-#   docker build -t <registry>/amd-track1:latest .
-FROM --platform=linux/amd64 python:3.11-slim
+# Build (add --platform linux/amd64 on Apple Silicon):
+#   docker build --platform linux/amd64 -t <registry>/amd-track1:latest .
+FROM python:3.11-slim
 
 WORKDIR /app
 

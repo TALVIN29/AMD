@@ -7,6 +7,7 @@ Track 1 ranks passing submissions by FEWEST tokens. Two levers:
 Most categories want a bare answer. Math/logic/code need a little room to be
 correct - accuracy gate comes first, so we don't starve them.
 """
+from __future__ import annotations
 
 # Default: applies to factual, sentiment, NER, summarisation.
 DEFAULT = "Answer directly. No preamble, no explanation. Give only the answer."

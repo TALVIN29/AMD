@@ -1,8 +1,4 @@
-"""Fireworks AI call (OpenAI-compatible). All graded inference goes through here.
-
-Track 1 rule: every answer MUST go through FIREWORKS_API_BASE_URL, or it is not
-recorded and scores zero. So there is no local-model path here on purpose.
-"""
+"""Fireworks AI call (OpenAI-compatible) for escalated tasks."""
 import os
 import requests
 
@@ -27,9 +23,13 @@ def answer(prompt: str, model: str, system: str, max_tokens: int = 512) -> tuple
         # No network, no key: echo a stub so we can test the batch plumbing + Docker.
         return f"[dry-run answer to: {prompt[:40]}]", 0
 
+    api_key = os.environ.get("FIREWORKS_API_KEY", "")
+    if not api_key:
+        raise RuntimeError("FIREWORKS_API_KEY not set")
+
     resp = requests.post(
         _base_url() + "/chat/completions",
-        headers={"Authorization": f"Bearer {os.environ.get('FIREWORKS_API_KEY', '')}"},
+        headers={"Authorization": f"Bearer {api_key}"},
         json={
             "model": model,
             "messages": [

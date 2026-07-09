@@ -41,9 +41,8 @@ more tokens). The new one aims for a real leaderboard position.
 
 ## What still needs decisions (before the July 11 deadline)
 
-- **Which local model + how eager to escalate.** There's a dial (`CONFIDENCE_THRESHOLD`):
-  higher = safer answers but more Fireworks tokens; lower = cheaper but riskier. We tune it
-  on practice tasks. See `README.md`.
+- **Which local model + which categories to escalate.** The current router uses the category
+  list in `agent/prompts.py`; tune that list on practice tasks. See `README.md`.
 - **Which Fireworks model** to fall back to (allowed list is in Discord).
 
 ## Your task: pressure-test it with Codex
