@@ -8,7 +8,12 @@ Hard categories (math, logic, code) -> Fireworks, where accuracy matters most.
 import os
 
 from agent import fireworks, local
-from agent.prompts import is_reasoning, system_for
+from agent.prompts import infer_category, is_reasoning, system_for
+
+# Preferred Fireworks model per task shape, matched by substring against
+# whatever ALLOWED_MODELS the harness injects (exact IDs are launch-day only).
+_CODE_MODEL_HINT = "kimi-k2p7-code"
+_GENERAL_MODEL_HINT = "gemma-4-26b-a4b-it"
 
 DRY_RUN = os.environ.get("AGENT_DRY_RUN") == "1"
 # When a task has no category label, default to the free local path. Set to 1 to
@@ -18,6 +23,8 @@ ESCALATE_UNKNOWN = os.environ.get("ESCALATE_UNKNOWN", "0") == "1"
 
 def route(prompt: str, category: str | None) -> tuple[str, str, int]:
     """Return (answer, route, fireworks_tokens). fireworks_tokens is 0 for local."""
+    if category is None:
+        category = infer_category(prompt)  # official example payload has no category field
     system = system_for(category)
 
     if DRY_RUN:
@@ -30,14 +37,16 @@ def route(prompt: str, category: str | None) -> tuple[str, str, int]:
     # Escalate to Fireworks; fall back to the local answer if the call fails so a
     # task is never dropped.
     try:
-        remote_answer, tokens = fireworks.answer(prompt, model=_fireworks_model(), system=system)
+        remote_answer, tokens = fireworks.answer(prompt, model=_fireworks_model(category), system=system)
         return remote_answer, "remote", tokens
     except Exception:  # noqa: BLE001
         return local.answer(prompt, system), "local_fallback", 0
 
 
-def _fireworks_model() -> str:
-    """Pick the Fireworks escalation model: MODEL override, else first allowed."""
+def _fireworks_model(category: str | None) -> str:
+    """Pick the Fireworks escalation model: MODEL override, else the best-fit
+    model in ALLOWED_MODELS for this task (code-tuned model for code, a
+    smaller/cheaper general model otherwise), else just the first allowed."""
     override = os.environ.get("MODEL")
     if override:
         return override
@@ -45,4 +54,12 @@ def _fireworks_model() -> str:
     models = [m.strip() for m in raw.split(",") if m.strip()]
     if not models:
         raise RuntimeError("ALLOWED_MODELS not set")
+
+    is_code = bool(category) and category.strip().lower() in {
+        "code_debugging", "code debugging", "code_generation", "code generation",
+    }
+    hint = _CODE_MODEL_HINT if is_code else _GENERAL_MODEL_HINT
+    for m in models:
+        if hint in m:
+            return m
     return models[0]

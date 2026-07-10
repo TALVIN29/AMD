@@ -32,8 +32,9 @@ hard categories (math, logic, code)                → Fireworks                
 ## Files
 
 - `agent/run.py` — batch entrypoint (`python -m agent.run`).
-- `agent/router.py` — local-first, escalate-on-low-confidence decision.
-- `agent/local.py` — the bundled GGUF model via llama.cpp (CPU); confidence from logprobs.
+- `agent/router.py` — local-first, escalate-by-category decision (with a text-based
+  fallback guess when no category field is given).
+- `agent/local.py` — the bundled GGUF model via llama.cpp (CPU).
 - `agent/fireworks.py` — the Fireworks (OpenAI-compatible) escalation call.
 - `agent/prompts.py` — terse prompts (shorter output = fewer tokens *and* faster CPU).
 - `eval/` — practice dataset + a harness reporting accuracy, local/remote split, and tokens.
@@ -89,9 +90,9 @@ local model handles is zero tokens.
 ## Launch-day checklist
 
 - [ ] Pick the local model size that fits 4 GB and clears accuracy (2-3B Q4 recommended).
-- [ ] Tune `CONFIDENCE_THRESHOLD` / `REASONING_THRESHOLD` on real-ish tasks.
 - [ ] Choose the cheapest Fireworks escalation model that passes (`MODEL` / `ALLOWED_MODELS`).
-- [ ] Confirm the exact `tasks.json` schema (agent already handles common field/shape variants).
+- [ ] Confirm the exact `tasks.json` schema (agent already handles common field/shape variants,
+      and falls back to inferring category from the prompt text if no category field is present).
 
 ## License
 

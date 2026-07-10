@@ -41,10 +41,13 @@ more tokens). The new one aims for a real leaderboard position.
 
 ## What still needs decisions (before the July 11 deadline)
 
-- **Which local model + how eager to escalate.** There's a dial (`CONFIDENCE_THRESHOLD`):
-  higher = safer answers but more Fireworks tokens; lower = cheaper but riskier. We tune it
-  on practice tasks. See `README.md`.
-- **Which Fireworks model** to fall back to (allowed list is in Discord).
+- **Which categories escalate.** Routing is by category label (math/logic/code -> Fireworks,
+  everything else -> free local), with a text-based guess as a fallback when a task has no
+  category field at all. No confidence dial exists in the code - don't go looking for one.
+- **Which Fireworks model per category** - `router.py` now prefers the code-tuned model for
+  code tasks and a cheaper general model otherwise, picked from the real `ALLOWED_MODELS` list
+  (confirmed on Discord: `minimax-m3`, `kimi-k2p7-code`, `gemma-4-31b-it`, `gemma-4-26b-a4b-it`,
+  `gemma-4-31b-it-nvfp4`).
 
 ## Your task: pressure-test it with Codex
 
@@ -58,19 +61,22 @@ push back — find anything that loses accuracy, wastes Fireworks tokens, or bre
 3. Paste this prompt:
 
 ```
-This repo is an AMD Hackathon Track 1 agent. Scoring: pass an LLM-judge accuracy gate,
-then rank by FEWEST Fireworks tokens. Local model inference is FREE (doesn't count toward
-tokens), so the agent is a router: answer locally, escalate to Fireworks only when unsure.
-Grading box: 4 GB RAM, 2 vCPU, CPU-only, linux/amd64.
+This repo is an AMD Hackathon Track 1 agent. Scoring: pass an 80% LLM-judge accuracy gate
+over 19 fixed tasks, then rank by FEWEST Fireworks tokens. Local model inference is FREE
+(doesn't count toward tokens), so the agent is a router: answer locally by default, escalate
+math/logic/code to Fireworks by category. Grading box: 4 GB RAM, 2 vCPU, CPU-only, linux/amd64.
 
 Review for improvements. Hard constraints — do NOT break these:
-- Keep local-first routing; Fireworks is only the fallback (via FIREWORKS_BASE_URL / ALLOWED_MODELS).
-- Must fit 4 GB RAM on CPU (local model stays 2-3B 4-bit); image under 10 GB; ready in 60s.
+- Keep local-first routing; Fireworks is only for math/logic/code (via FIREWORKS_BASE_URL / ALLOWED_MODELS).
+- Must fit 4 GB RAM on CPU (local model stays 2-3B 4-bit); image comfortably under 5 GB
+  (10 GB hard cap, but stay well clear of it); ready in 60s.
 - One-shot batch: read /input/tasks.json, write valid /output/results.json (list of {task_id, answer}), exit 0.
 
 Focus on:
-1. The routing decision in agent/router.py — is the confidence signal from agent/local.py
-   (avg token logprob) a sound escalation trigger? Suggest better, still-cheap signals.
+1. The routing decision in agent/router.py and agent/prompts.py's infer_category() — the
+   official example payload has no category field at all, so this regex/keyword fallback is
+   the only thing catching math/logic/code when unlabeled. Is it good enough? Suggest better,
+   still-cheap (no LLM call) signals if you see gaps.
 2. Prompt wording in agent/prompts.py — shorter while keeping accuracy on all 8 categories?
 3. Is a 2-3B model the right pick, or is there a better small model for math/logic/code?
 4. Robustness of tasks.json parsing in agent/run.py against schema variants.
