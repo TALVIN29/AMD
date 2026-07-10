@@ -8,6 +8,8 @@ Contract (from the participant guide):
 
 Run: python -m agent.run
 """
+from __future__ import annotations
+
 import json
 import os
 import sys
@@ -24,8 +26,10 @@ def load_tasks(raw: dict | list) -> list[dict]:
     """Accept a bare list or a {"tasks": [...]} wrapper - exact schema is only
     confirmed on launch day, so stay defensive."""
     if isinstance(raw, dict) and "tasks" in raw:
-        return raw["tasks"]
+        raw = raw["tasks"]
     if isinstance(raw, list):
+        if not all(isinstance(task, dict) for task in raw):
+            raise ValueError("tasks.json must contain task objects")
         return raw
     raise ValueError(f"Unexpected tasks.json shape: {type(raw).__name__}")
 
@@ -33,7 +37,7 @@ def load_tasks(raw: dict | list) -> list[dict]:
 def field(task: dict, *names: str, default: str = "") -> str:
     for n in names:
         if task.get(n) not in (None, ""):
-            return task[n]
+            return str(task[n])
     return default
 
 
@@ -44,7 +48,7 @@ def main() -> int:
     results, log = [], []
     for i, task in enumerate(tasks):
         tid = field(task, "task_id", "id", default=str(i))
-        prompt = field(task, "prompt", "input", "text", "question")
+        prompt = field(task, "prompt", "input", "text", "question", "task")
         category = field(task, "category", "type") or None
         try:
             answer, route, tokens = router.route(prompt, category)

@@ -5,6 +5,8 @@ The leaderboard rewards fewer Fireworks tokens, so we keep as much as possible o
 free local path. Easy categories (facts, sentiment, NER, summarisation) -> local.
 Hard categories (math, logic, code) -> Fireworks, where accuracy matters most.
 """
+from __future__ import annotations
+
 import os
 
 from agent import fireworks, local
@@ -44,10 +46,10 @@ def route(prompt: str, category: str | None) -> tuple[str, str, int]:
 
 
 def _fireworks_model(category: str | None) -> str:
-    """Pick the Fireworks escalation model: MODEL override, else the best-fit
-    model in ALLOWED_MODELS for this task (code-tuned model for code, a
-    smaller/cheaper general model otherwise), else just the first allowed."""
-    override = os.environ.get("MODEL")
+    """Pick the Fireworks escalation model: MODEL/REMOTE_MODEL override, else
+    the best-fit model in ALLOWED_MODELS for this task (code-tuned model for
+    code, a smaller/cheaper general model otherwise), else just first allowed."""
+    override = os.environ.get("MODEL") or os.environ.get("REMOTE_MODEL")
     if override:
         return override
     raw = os.environ.get("ALLOWED_MODELS", "")
